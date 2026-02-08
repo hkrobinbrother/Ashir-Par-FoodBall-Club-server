@@ -50,6 +50,8 @@ async function run() {
     const db = client.db("AshirParFoodballClub");
 
     const playersCollection = db.collection("players");
+    const scoresCollection = db.collection("scores");
+    const MatchesCollection = db.collection("matches");
 
 
     // jwt route
@@ -80,14 +82,22 @@ async function run() {
         res.status(500).send(err)
       }
     })
-
+// players route
     app.get("/players", async (req, res) => {
       const players = await playersCollection.find().toArray();
       res.send(players);
     });
-
-
-
+// scores route 
+    app.get("/scores", async (req, res) => {
+      const scores = await scoresCollection.find().toArray();
+      res.send(scores);
+    });
+    
+// matches route
+    app.get("/matches", async (req, res) => {
+      const matches = await MatchesCollection.find().toArray();
+      res.send(matches);
+    });
 
 
 
