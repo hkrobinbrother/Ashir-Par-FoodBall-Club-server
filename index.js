@@ -51,7 +51,7 @@ async function run() {
 
     const playersCollection = db.collection("players");
     const scoresCollection = db.collection("scores");
-    const MatchesCollection = db.collection("matches");
+    const NextMatchCollection = db.collection("nextmatch");
 
 
     // jwt route
@@ -94,9 +94,9 @@ async function run() {
     });
     
 // matches route
-    app.get("/matches", async (req, res) => {
-      const matches = await MatchesCollection.find().toArray();
-      res.send(matches);
+    app.get("/nextmatch", async (req, res) => {
+      const Nextmatch = await NextMatchCollection.find().toArray();
+      res.send(Nextmatch);
     });
 
 
