@@ -9,7 +9,10 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+app.use(cors(({
+  origin: ['http://localhost:5173'], // frontend url
+  credentials: true
+})));
 app.use(express.json());
 app.use(cookieParser())
 
@@ -95,11 +98,15 @@ async function run() {
     
 // matches route
     app.get("/nextmatch", async (req, res) => {
-      const Nextmatch = await NextMatchCollection.find().toArray();
+      const Nextmatch = await NextMatchCollection.find().sort({ _id: -1 }).limit(1).toArray();
       res.send(Nextmatch);
     });
 
-
+    app.post("/nextmatch", async (req, res) => {
+      const match = req.body;
+      const result = await NextMatchCollection.insertOne(match);
+      res.send(result);
+    });
 
 
 
