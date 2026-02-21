@@ -55,22 +55,36 @@ async function run() {
     const playersCollection = db.collection("players");
     const scoresCollection = db.collection("scores");
     const NextMatchCollection = db.collection("nextmatch");
+    const userCollection = db.collection("users");
 
 
     // jwt route
-    app.post('/jwt', async (req, res) => {
-      const email = req.body
-      const token = jwt.sign(email, process.env.JWT_SECRET, {
-        expiresIn: '365d',
-      })
-      res
-        .cookie('token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-        })
-        .send({ success: true })
-    })
+    // Frontend can call this after Firebase login
+    app.post("/jwt", async (req, res) => {
+      const { email } = req.body;
+
+      try {
+        const user = await userCollection.findOne({ email });
+        if (!user) return res.status(404).send({ message: "User not found" });
+
+        const token = jwt.sign(
+          { email: user.email, role: user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: "365d" }
+        );
+
+        res
+          .cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+          })
+          .send({ success: true, token });
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
     // logout route
     app.get('/logout', async (req, res) => {
       try {
@@ -85,18 +99,63 @@ async function run() {
         res.status(500).send(err)
       }
     })
-// players route
+
+
+    // users route
+    // Register User
+    app.post("/users", async (req, res) => {
+      const { name, email, photoURL, role } = req.body;
+
+      try {
+        const existingUser = await userCollection.findOne({ email });
+        if (existingUser) {
+          return res.status(400).send({ message: "User already exists" });
+        }
+
+        const result = await userCollection.insertOne({
+          name,
+          email,
+          photoURL: photoURL || "",
+          role: role || "user",
+        });
+
+        // Generate JWT
+        const token = jwt.sign(
+          { email, role: role || "user" },
+          process.env.JWT_SECRET,
+          { expiresIn: "365d" }
+        );
+
+        // send token in cookie
+        res
+          .cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+            maxAge: 365 * 24 * 60 * 60 * 1000,
+          })
+          .send({ success: true, user: { name, email, photoURL, role }, token });
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+    // players route
     app.get("/players", async (req, res) => {
       const players = await playersCollection.find().toArray();
       res.send(players);
     });
-// scores route 
+    // scores route 
     app.get("/scores", async (req, res) => {
-      const scores = await scoresCollection.find().toArray();
+      const scores = await scoresCollection.find().sort({ _id: -1 }).limit(1).toArray();
       res.send(scores);
     });
-    
-// matches route
+    app.post("/scores", async (req, res) => {
+      const score = req.body;
+      const result = await scoresCollection.insertOne(score);
+      res.send(result);
+    });
+    // matches route
     app.get("/nextmatch", async (req, res) => {
       const Nextmatch = await NextMatchCollection.find().sort({ _id: -1 }).limit(1).toArray();
       res.send(Nextmatch);
@@ -108,6 +167,19 @@ async function run() {
       res.send(result);
     });
 
+
+    // news route
+
+    app.post("/news", async (req, res) => {
+      const news = req.body;
+      const result = await db.collection("news").insertOne(news);
+      res.send(result);
+    });
+
+    app.get("/news", async (req, res) => {
+      const news = await db.collection("news").find().toArray();
+      res.send(news);
+    });
 
 
     // Send a ping to confirm a successful connection
