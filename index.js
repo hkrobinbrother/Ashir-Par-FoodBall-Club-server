@@ -56,6 +56,7 @@ async function run() {
     const scoresCollection = db.collection("scores");
     const NextMatchCollection = db.collection("nextmatch");
     const userCollection = db.collection("users");
+    const newsCollection = db.collection("news");
 
 
     // jwt route
@@ -177,10 +178,16 @@ async function run() {
     });
 
     app.get("/news", async (req, res) => {
-      const news = await db.collection("news").find().toArray();
-      res.send(news);
-    });
+      const category = req.query.category;
 
+      let query = {};
+      if (category) {
+        query = { category: category };
+      }
+
+      const result = await newsCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
