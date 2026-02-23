@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser')
 const cors = require("cors");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion ,ObjectId} = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -109,37 +109,48 @@ async function run() {
 
       try {
         const existingUser = await userCollection.findOne({ email });
+
+        // ✅ If user already exists → just return success
         if (existingUser) {
-          return res.status(400).send({ message: "User already exists" });
+          return res.send({
+            success: true,
+            message: "User already exists",
+            user: existingUser,
+          });
         }
 
+        // ✅ If new user → insert into DB
         const result = await userCollection.insertOne({
           name,
           email,
           photoURL: photoURL || "",
           role: role || "user",
+          createdAt: new Date(),
         });
 
-        // Generate JWT
-        const token = jwt.sign(
-          { email, role: role || "user" },
-          process.env.JWT_SECRET,
-          { expiresIn: "365d" }
-        );
+        res.send({
+          success: true,
+          message: "User created successfully",
+          insertedId: result.insertedId,
+        });
 
-        // send token in cookie
-        res
-          .cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-            maxAge: 365 * 24 * 60 * 60 * 1000,
-          })
-          .send({ success: true, user: { name, email, photoURL, role }, token });
       } catch (err) {
         console.error(err);
         res.status(500).send({ message: "Server error" });
       }
+    });
+
+
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const user = await userCollection.findOne({ email });
+
+      if (!user) {
+        return res.status(404).send({ message: "User not found" });
+      }
+
+      res.send(user);
     });
     // players route
     app.get("/players", async (req, res) => {
