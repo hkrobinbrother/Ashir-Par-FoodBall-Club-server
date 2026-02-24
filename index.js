@@ -153,16 +153,49 @@ async function run() {
       res.send(user);
     });
     // players route
-    app.get("/players", async (req, res) => {
-      const players = await playersCollection.find().toArray();
-      res.send(players);
+   // players route
+app.get("/players", async (req, res) => {
+  const players = await playersCollection.find().toArray();
+  res.send(players);
+});
+
+// create new player - safe route
+app.post("/players", verifyToken, async (req, res) => {
+  try {
+    // Optional: only admin can add players
+    if (req.user.role !== "admin") {
+      return res.status(403).send({ message: "Forbidden: Admins only" });
+    }
+
+    const { name, image, role } = req.body;
+
+    if (!name || !image || !role) {
+      return res.status(400).send({ message: "All fields are required" });
+    }
+
+    const result = await playersCollection.insertOne({
+      name,
+      image,
+      role,
+      createdAt: new Date(),
     });
+
+    res.send({
+      success: true,
+      message: "Player added successfully",
+      insertedId: result.insertedId,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ message: "Server error" });
+  }
+});
     // scores route 
     app.get("/scores", async (req, res) => {
-      const scores = await scoresCollection.find().sort({ _id: -1 }).limit(1).toArray();
+      const scores = await scoresCollection.find().toArray();
       res.send(scores);
     });
-    app.post("/scores", async (req, res) => {
+    app.post("/scores",verifyToken, async (req, res) => {
       const score = req.body;
       const result = await scoresCollection.insertOne(score);
       res.send(result);
@@ -173,7 +206,7 @@ async function run() {
       res.send(Nextmatch);
     });
 
-    app.post("/nextmatch", async (req, res) => {
+    app.post("/nextmatch",verifyToken, async (req, res) => {
       const match = req.body;
       const result = await NextMatchCollection.insertOne(match);
       res.send(result);
